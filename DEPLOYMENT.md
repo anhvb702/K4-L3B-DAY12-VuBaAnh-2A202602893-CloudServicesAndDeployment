@@ -1,101 +1,36 @@
-# Thông Tin Deploy — Checkpoint 5
+# CP5 Deployment Record
 
-> Điền file này sau khi deploy xong. `pytest tests/test_cp5.py` đọc file này
-> để tìm địa chỉ service của bạn và gọi thử.
->
-> **Chỉ ghi TÊN biến môi trường, tuyệt đối không dán giá trị API key vào đây.**
-> Repo này công khai — dán khóa vào là mất khóa.
+## Student
 
-## Thông Tin Học Viên
+| Field | Value |
+|---|---|
+| Name | Vũ Bá Anh |
+| Student ID (mã học viên) | 2A202602893 |
+| Repository | https://github.com/anhvb702/K4-L3B-DAY12-VuBaAnh-2A202602893-CloudServicesAndDeployment |
 
-| Mục | Nội dung |
-|-----|----------|
-| Họ và tên | (điền họ tên) |
-| Mã học viên | (điền mã học viên) |
-| Repo | (điền link repo K4-L3B-DAY12-HoVaTen-MSSV-CloudServicesAndDeployment) |
+## Deployment
 
-## Service
+| Field | Value |
+|---|---|
+| Platform | Local fallback: Docker Compose (Railway trial expired; Render dashboard unavailable in this session) |
+| Public URL | Not deployed publicly; local service: http://localhost:8001 |
+| Deployment date | 2026-09-29 |
+| Runtime | Docker Compose agent and Redis; host port 8001 maps to container port 8000 |
 
-| Mục | Nội dung |
-|-----|----------|
-| Public URL | https://TODO-thay-bang-url-that.up.railway.app |
-| Platform | Railway / Render / Cloud Run — (điền platform bạn dùng) |
-| Ngày deploy | (điền ngày) |
+The local container receives `AGENT_API_KEY` and `REDIS_URL`; the remaining settings use the app defaults `RATE_LIMIT_PER_MINUTE=10`, `MONTHLY_BUDGET_USD=10.0`, and `LOG_LEVEL=INFO`. `AGENT_API_KEY` is supplied from the ignored local `.env`; no secret value is recorded here. Compose sets `REDIS_URL=redis://redis:6379/0`.
 
-## Biến Môi Trường Đã Set Trên Cloud
+## Verification
 
-Ghi tên biến và **nguồn giá trị**, không ghi giá trị:
+| Request | Actual result |
+|---|---|
+| `GET http://localhost:8001/health` | HTTP 200, `{"status":"ok","service":"day12-agent","version":"1.0.0"}` |
+| `GET http://localhost:8001/ready` | HTTP 200, `{"status":"ready","redis":true}` |
+| Unauthenticated `POST /ask` | HTTP 401, `{"detail":"invalid or missing API key"}` |
+| Authenticated `POST /ask` | HTTP 200; answer returned |
 
-| Biến | Đã set | Ghi chú |
-|------|--------|---------|
-| `PORT` | ✅ | platform tự gán |
-| `AGENT_API_KEY` | ✅ | đặt trong dashboard, không nằm trong repo |
-| `REDIS_URL` | ✅ | (điền: Redis add-on của platform / Upstash / ...) |
-| `RATE_LIMIT_PER_MINUTE` | ✅ | 10 |
-| `MONTHLY_BUDGET_USD` | ✅ | 10.0 |
-| `LOG_LEVEL` | ✅ | INFO |
+The app and Redis containers were running and healthy during these checks. `LOCAL_FALLBACK=true` is set in the local, ignored `.env` so CP5 tests exercise this Compose stack. This is the documented fallback and is not a public cloud deployment.
 
-## Lệnh Kiểm Tra
+## Screenshots
 
-Thay `<URL>` bằng Public URL ở trên:
-
-```bash
-# 1. Liveness — mong đợi 200 {"status":"ok"}
-curl -i <URL>/health
-
-# 2. Readiness — mong đợi 200 {"status":"ready"} (đã nối được Redis)
-curl -i <URL>/ready
-
-# 3. Không có API key — mong đợi 401
-curl -i -X POST <URL>/ask \
-  -H "Content-Type: application/json" \
-  -d '{"question":"Hello"}'
-
-# 4. Có API key — mong đợi 200 kèm câu trả lời
-curl -i -X POST <URL>/ask \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: $AGENT_API_KEY" \
-  -H "X-User-Id: sv-test" \
-  -d '{"question":"Deploy là gì?"}'
-
-# 5. Rate limit — gọi 15 lần, những lần cuối phải trả 429
-for i in $(seq 1 15); do
-  curl -s -o /dev/null -w "%{http_code} " -X POST <URL>/ask \
-    -H "Content-Type: application/json" \
-    -H "X-API-Key: $AGENT_API_KEY" \
-    -H "X-User-Id: sv-test" \
-    -d '{"question":"test"}'
-done; echo
-```
-
-## Kết Quả Chạy Thật
-
-Dán output của các lệnh trên vào đây:
-
-```
-(điền output)
-```
-
-## Ảnh Chụp Màn Hình
-
-Đặt ảnh trong thư mục `screenshots/`:
-
-- `screenshots/dashboard.png` — trang quản lý service trên platform
-- `screenshots/health.png` — kết quả gọi `/health` từ trình duyệt hoặc curl
-
----
-
-## Nếu Dùng Phương Án Dự Phòng
-
-Không đăng ký được tài khoản cloud? Vẫn nộp được bài, nhưng CP5 tối đa 60% điểm:
-
-1. Đặt `LOCAL_FALLBACK=true` trong `.env`
-2. Chạy `docker compose up -d` rồi kiểm tra `docker compose ps`
-3. Chụp màn hình vào `screenshots/`
-4. Chạy `pytest tests/test_cp5.py -v` — bộ test sẽ tự chuyển sang kiểm tra
-   `http://localhost:8000`
-5. Ghi rõ lý do không deploy được vào phần dưới đây:
-
-```
-(điền lý do nếu dùng phương án dự phòng, ngược lại xóa mục này)
-```
+- `screenshots/health.png` — actual local `/health` response.
+- `screenshots/dashboard.png` — unavailable; this session has no browser/UI surface to capture a platform dashboard. The Compose status was verified with `docker compose ps`.
