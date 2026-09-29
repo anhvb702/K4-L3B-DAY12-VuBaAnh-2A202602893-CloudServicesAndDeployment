@@ -16,7 +16,7 @@ Trong `Settings`, `agent_api_key` không có giá trị mặc định nên app c
 khi khởi động nếu thiếu biến môi trường. Hãy mô tả một tình huống cụ thể mà
 việc "chết sớm" này cứu bạn, so với việc để mặc định `"changeme"`.
 
-> Nếu thiếu `AGENT_API_KEY` trên Railway, app lỗi ngay lúc khởi động nên mình biết deploy đang thiếu cấu hình trước khi nhận request. Nếu đặt mặc định là `changeme`, service vẫn chạy nhưng khóa dễ đoán và người khác có thể gọi `/ask`.
+> Khi chuyển service `day12-agent` lên Render, nếu quên khai báo `AGENT_API_KEY`, `Settings` sẽ báo lỗi lúc khởi động thay vì để service nhận request với một khóa mặc định ai cũng biết. Như vậy mình phát hiện cấu hình thiếu trong deploy logs trước khi mở API công khai.
 
 ---
 
@@ -26,7 +26,7 @@ Chạy service và gọi `/ask` vài lần. Dán một dòng log JSON bạn thu 
 nêu **hai** việc bạn làm được với dòng log đó mà `print("đã trả lời xong")`
 không làm được.
 
-> Mình chưa lấy được dòng JSON thật từ stdout của container trong phiên này vì Docker CLI không khả dụng ở terminal hiện tại. Một dòng `ask_completed` cho phép nhóm theo `user_id` để đếm request và cộng `cost_usd` để tìm user tốn nhiều nhất; dòng `print("đã trả lời xong")` không có các trường đó. **Cần bổ sung:** dán một dòng thật lấy từ `docker compose logs agent`.
+> Khi gọi `/ask` qua ứng dụng với Redis giả, stdout ghi đúng một dòng: `{"event": "ask_completed", "level": "info", "timestamp": "2026-09-29T09:37:32.525984+00:00", "user_id": "exercise-log", "tokens_in": 6, "tokens_out": 39, "cost_usd": 2.43e-05}`. Từ các trường này mình lọc request theo `user_id` và cộng `cost_usd`; câu `print("đã trả lời xong")` không cho biết ai gọi hoặc request tốn bao nhiêu.
 
 ---
 
@@ -43,11 +43,11 @@ docker images | grep agent
 | Bản | Dung lượng |
 |-----|-----------|
 | 1 stage (bản đầu) | Chưa đo; repo không còn bản image 1-stage để so sánh |
-| Multi-stage | 271 MB |
+| Multi-stage (`k4-l3b-day12-vubaanh-2a202602893-cloudservicesanddeployment-agent:latest`) | 271 MB |
 
 Giải thích: phần dung lượng chênh lệch đó là những gì?
 
-> Image multi-stage đo được là **271 MB**. Dockerfile cài dependency ở stage `builder`, rồi chỉ chép phần cài đặt cùng source sang `runtime`; nhờ vậy image cuối không mang theo nội dung chỉ cần lúc build. Mình không có số đo bản 1-stage nên không kết luận được chính xác phần chênh lệch.
+> `docker image ls` đo image multi-stage hiện tại của repo là **271 MB**. Dockerfile cài dependency ở `builder` rồi chép phần cài đặt và source sang `runtime`. Mình không build/đo image 1-stage nên không ghi số so sánh hoặc khẳng định mức chênh lệch.
 
 ---
 
@@ -116,4 +116,4 @@ Ghi lại **một** lỗi bạn gặp khi deploy lên cloud (build fail, health 
 timeout, sai REDIS_URL, app không đọc `$PORT`...): thông báo lỗi là gì, bạn
 tìm ra nguyên nhân bằng cách nào, và sửa ra sao?
 
-> Khi chuẩn bị deploy Railway, lệnh `railway init` báo: `Your trial has expired. Please select a plan to continue using Railway.` Mình xác nhận CLI vẫn đăng nhập được bằng `railway whoami`, rồi thấy project duy nhất hiện có gắn với service `ticketmanagement`, nên không dùng nhầm project đó. Vì không chọn plan trả phí theo yêu cầu, mình giữ phương án `LOCAL_FALLBACK=true`; CP5 fallback đạt tối đa 9/15. **Cần bạn rà lại câu trả lời cá nhân này trước khi nộp.**
+> Lần đầu chạy CP5 sau khi chuyển sang Render, bốn test cloud báo lỗi vì `DEPLOYMENT.md` vẫn ghi URL local, nên test không tìm thấy Public URL HTTPS. Mình đọc lỗi fixture `base_url`, thay URL bằng `https://day12-agent-p3pa.onrender.com`, rồi chạy lại: `/health` và `/ready` trả 200, unauthenticated `/ask` trả 401, và authenticated `/ask` cũng thành công. Đây là lỗi hồ sơ deployment thiếu URL thật, không phải app cần thêm route `/`; root 404 vẫn là expected.
